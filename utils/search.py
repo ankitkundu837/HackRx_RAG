@@ -3,6 +3,8 @@ from utils.chroma_functions import (get_chroma_collection,load_chroma)
 def query_documents(questions: list[str]):
     collection = get_chroma_collection("documents")
     
+
+
     load_chroma("./data/policy.pdf", collection)
 
     print(f"Querying documents for questions: {questions}")
