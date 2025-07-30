@@ -19,7 +19,9 @@ class QueryRequest(BaseModel):
     questions: List[str]
 
 class QueryResponse(BaseModel):
+    success: bool
     answers: List[str]
+
 
 
 def verify_token(authorization: Optional[str] = Header(None)) -> bool:
@@ -78,7 +80,8 @@ def run_query(
 
         background_tasks.add_task(cleanup)
 
-        return QueryResponse(answers=answers)
+        return QueryResponse(success=True, answers=answers)
+
 
     except Exception as e:
         print("Error occurred:", e)
