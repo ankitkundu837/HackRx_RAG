@@ -72,6 +72,9 @@ def run_query(
         print("Generating batch responses for questions...")
         answers = generate_batch_responses(payload.questions, relevant_chunks)
         print("Batch responses generated successfully.")
+        for idx, ans in enumerate(answers, 1):
+            print(f"Answer {idx}: {ans}")
+
 
         def cleanup():
             if os.path.exists(pdf_path):
