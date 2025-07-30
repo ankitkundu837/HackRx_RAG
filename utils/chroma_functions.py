@@ -1,6 +1,5 @@
 
 import chromadb
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from utils.pdf_parser import chunks_from_pdf
 from utils.openAI_embedding_f import OpenAIEmbeddingFunction
 
