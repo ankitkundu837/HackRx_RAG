@@ -1,11 +1,11 @@
-# Use slim Python image to reduce size
+# Use lightweight Python base image
 FROM python:3.10-slim
 
-# Set environment variables to prevent interactive prompts and Python cache
+# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies required by many Python packages
+# Install system dependencies for pdfplumber + Torch
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libglib2.0-0 \
@@ -16,23 +16,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Set work directory
+# Set working directory
 WORKDIR /app
 
-# Install torch and torchvision (CPU only) before other packages
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir torch==2.2.2+cpu torchvision==0.17.2+cpu \
-       -f https://download.pytorch.org/whl/cpu/torch_stable.html
+# Pre-install CPU-only torch
+RUN pip install --upgrade pip \
+ && pip install torch==2.2.2+cpu torchvision==0.17.2+cpu \
+    -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
-# Copy requirements and install rest of the dependencies
+# Copy requirements and install remaining
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
+# Copy your app
 COPY . .
 
 # Expose port for FastAPI
 EXPOSE 8000
 
-# Start FastAPI app with uvicorn
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run app
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
