@@ -5,7 +5,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# System packages for pdfplumber and sentence-transformers
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpoppler-cpp-dev \
@@ -14,13 +14,14 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Pre-install dependencies
-COPY requirements.txt .
+# Preinstall torch CPU-only before other heavy libs
 RUN pip install --upgrade pip \
- && pip install torch torchvision \
- && pip install -r requirements.txt
+ && pip install torch==2.1.2+cpu torchvision==0.16.1+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
-# Copy source code
+# Copy requirements and install rest
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
 
 EXPOSE 8000
