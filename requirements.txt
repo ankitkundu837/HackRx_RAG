@@ -1,8 +1,9 @@
-chromadb==1.0.15
 fastapi==0.116.1
 langchain==0.3.27
+numpy==2.3.2
 openai==1.98.0
 pdfplumber==0.11.7
+pinecone==7.3.0
 pydantic==2.11.7
 python-dotenv==1.1.1
 Requests==2.32.4
