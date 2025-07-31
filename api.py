@@ -6,7 +6,7 @@ import tempfile
 from dotenv import load_dotenv
 from utils.LLM import generate_batch_responses
 from utils.pdf_download import download_and_store_pdf
-from utils.pinecone_functions import load_pinecone  # ⬅️ replaced chroma
+from utils.pinecone_functions import load_pdf_to_pinecone, load_pinecone  # ⬅️ replaced chroma
 from utils.search import query_documents            # ⬅️ replaced chroma
 from utils.pinecone_functions import delete_pinecone_index  # Optional cleanup
 
@@ -58,7 +58,7 @@ def run_query(
         print("PDF downloaded and stored at:", pdf_path)
 
         print("Loading PDF into Pinecone index...")
-        load_pinecone(pdf_path)  # ⬅️ replaced Chroma
+        load_pdf_to_pinecone(pdf_path)  # ⬅️ replaced Chroma
         print("PDF loaded into Pinecone successfully.")
 
         print(f"Querying Pinecone index for questions: {payload.questions}")
