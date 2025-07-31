@@ -1,11 +1,11 @@
 
 import chromadb
 from utils.pdf_parser import chunks_from_pdf
-from utils.openAI_embedding_f import OpenAIEmbeddingFunction
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
 client = chromadb.PersistentClient(path="./chroma_db")
 
-embedding_function = OpenAIEmbeddingFunction()
+embedding_function = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
 # embedding_function = SentenceTransformerEmbeddingFunction()
 
 def get_chroma_collection(collection_name: str):
