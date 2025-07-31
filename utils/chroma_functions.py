@@ -20,4 +20,8 @@ def load_chroma(filename, chroma_collection):
     chroma_collection.count()
 
 def drop_chroma_collection(collection_name: str):
-    client.delete_collection(name=collection_name)
+    if collection_name in [c.name for c in client.list_collections()]:
+        client.delete_collection(name=collection_name)
+        print(f"Collection [{collection_name}] deleted.")
+    else:
+        print(f"Collection [{collection_name}] not found.")
