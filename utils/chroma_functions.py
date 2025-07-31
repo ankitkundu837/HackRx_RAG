@@ -1,4 +1,3 @@
-
 import chromadb
 from utils.pdf_parser import chunks_from_pdf
 from utils.openAI_embedding_f import OpenAIEmbeddingFunction
