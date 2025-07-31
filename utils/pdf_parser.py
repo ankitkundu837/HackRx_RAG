@@ -1,4 +1,5 @@
 import pdfplumber
+import tiktoken
 from langchain.text_splitter import RecursiveCharacterTextSplitter, TokenTextSplitter
 
 def chunks_from_pdf(file_path):
@@ -47,3 +48,45 @@ def chunks_from_pdf(file_path):
 
     print(f"Extracted {len(token_chunks)} meaningful chunks from {file_path}.")
     return token_chunks
+
+
+def pdf_token_stream(file_path, max_tokens=60000, chunk_token_limit=256):
+    splitter = TokenTextSplitter(chunk_size=chunk_token_limit, chunk_overlap=0)
+    tokenizer = tiktoken.get_encoding("cl100k_base")
+
+    buffer = []
+    token_count = 0
+    footer_keywords = {"page", "hero motocorp", "indian constitution", "super splendor"}
+
+    with pdfplumber.open(file_path) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text(layout=True)
+            if not text:
+                continue
+
+            lines = [
+                line.strip()
+                for line in text.splitlines()
+                if len(line.strip()) > 20 and not any(k in line.lower() for k in footer_keywords)
+            ]
+
+            joined = "\n".join(lines)
+            chunks = splitter.split_text(joined)
+
+            for chunk in chunks:
+                tokens = tokenizer.encode(chunk)
+                token_len = len(tokens)
+
+                if token_len > max_tokens:
+                    continue  # skip abnormally long chunks
+
+                if token_count + token_len > max_tokens:
+                    yield buffer
+                    buffer = []
+                    token_count = 0
+
+                buffer.append(chunk)
+                token_count += token_len
+
+    if buffer:
+        yield buffer

@@ -1,5 +1,6 @@
 from utils.openAI_embedding_f import OpenAIEmbeddingFunction
-embedding_function = OpenAIEmbeddingFunction()
+from utils.local_embedder import LocalEmbeddingFunction
+embedding_function = LocalEmbeddingFunction()
 from pinecone import Pinecone, ServerlessSpec
 from dotenv import load_dotenv
 import os
@@ -20,7 +21,7 @@ def query_documents(questions: list[str]):
         if hasattr(vector, "tolist"):
             vector = vector.tolist()
 
-        if not isinstance(vector, list) or len(vector) != 1536:
+        if not isinstance(vector, list) or len(vector) != 384:
             raise ValueError(f"Invalid embedding for question '{question}': {type(vector)} / len={len(vector)}")
 
         result = index.query(

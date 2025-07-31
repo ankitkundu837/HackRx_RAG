@@ -1,4 +1,5 @@
-from utils.pinecone_functions import delete_pinecone_index, load_pinecone
+from utils.pdf_download import download_and_store_pdf
+from utils.pinecone_functions import delete_pinecone_index, load_pdf_to_pinecone, load_pinecone, reset_index
 from utils.search import query_documents
 from utils.LLM import generate_response, generate_batch_responses
 import os
@@ -6,19 +7,20 @@ import os
 
 question = "What is Accident?"
 questions =  [
-    "What is the purpose of the i3s (Idle Stop Start System) in the Super Splendor motorcycle?",
-    "What is the correct procedure for starting the Super Splendor engine?",
-    "How should the rider check the engine oil level in the Super Splendor?",
-    "What safety features are associated with the side stand in the Super Splendor?",
-    "What are Hero MotoCorp’s recommendations for safe and eco-friendly riding?"
-  ]
+        "Is Non-infective Arthritis covered?", 
+        "I renewed my policy yesterday, and I have been a customer for the last 6 years. Can I raise a claim for Hydrocele?", 
+        "Is abortion covered?"
+    ]
 
 # print("Received documents URL:", payload.documents)
-pdf_path = "./data/Super_Splendor_(Feb_2023).pdf"
+documents="https://hackrx.blob.core.windows.net/assets/indian_constitution.pdf?sv=2023-01-03&st=2025-07-28T06%3A42%3A00Z&se=2026-11-29T06%3A42%3A00Z&sr=b&sp=r&sig=5Gs%2FOXqP3zY00lgciu4BZjDV5QjTDIx7fgnfdz6Pu24%3D"
+print("Received documents URL:", documents)
+pdf_path = download_and_store_pdf(documents)
 print("PDF downloaded and stored at:", pdf_path)
 
 print("Loading PDF into Pinecone index...")
-load_pinecone(pdf_path)  # ⬅️ replaced Chroma
+load_pdf_to_pinecone(pdf_path)
+
 print("PDF loaded into Pinecone successfully.")
 
 print(f"Querying Pinecone index for questions: {questions}")
