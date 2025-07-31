@@ -8,7 +8,7 @@ from utils.LLM import generate_batch_responses
 from utils.pdf_download import download_and_store_pdf
 from utils.pinecone_functions import load_pinecone  # ⬅️ replaced chroma
 from utils.search import query_documents            # ⬅️ replaced chroma
-# from utils.pinecone_functions import delete_pinecone_index  # Optional cleanup
+from utils.pinecone_functions import delete_pinecone_index  # Optional cleanup
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
@@ -74,7 +74,7 @@ def run_query(
             if os.path.exists(pdf_path):
                 os.remove(pdf_path)
             # Optionally delete the Pinecone index if needed:
-            # delete_pinecone_index()
+            delete_pinecone_index()
 
         background_tasks.add_task(cleanup)
 
