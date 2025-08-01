@@ -65,7 +65,7 @@ def run_query(
         print("PDF loaded into Chroma collection successfully.")
 
         print(f"Querying documents for questions: {payload.questions}")
-        results = collection.query(query_texts=payload.questions, n_results=3)
+        results = collection.query(query_texts=payload.questions, n_results=6)
         relevant_chunks = results["documents"]
         print("==== Returning relevant chunks ====")
 
