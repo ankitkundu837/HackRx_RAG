@@ -1,85 +1,159 @@
 import os
 import re
-import requests
+from openai import OpenAI
+from dotenv import load_dotenv
 import tiktoken
-from typing import List
 
-API_URL = "https://67444dfd2e04.ngrok-free.app/api/generate"
-MODEL = "llama3"
+load_dotenv()
+
+token = os.getenv("GITHUB_TOKEN")
+endpoint = "https://models.github.ai/inference"
+model = "openai/gpt-4.1"
+
+client = OpenAI(base_url=endpoint, api_key=token)
 
 
-def get_encoding(model: str = "gpt-4") -> tiktoken.Encoding:
+def get_encoding(model: str):
     try:
         return tiktoken.encoding_for_model(model)
     except:
         return tiktoken.get_encoding("cl100k_base")
 
 
-def count_tokens(text: str, model: str = "gpt-4") -> int:
+def count_tokens(text, model=model):
     enc = get_encoding(model)
     return len(enc.encode(text))
 
 
-def limit_chunks_by_token(chunks: List[str], max_tokens: int = 2000) -> List[str]:
-    enc = get_encoding()
+def limit_chunks_by_token(chunks, model=model, max_tokens=2000):
+    enc = get_encoding(model)
     total = 0
     selected = []
+
     for chunk in chunks:
         tokens = len(enc.encode(chunk))
         if total + tokens > max_tokens:
             break
         selected.append(chunk)
         total += tokens
+
     return selected
 
 
-def call_llama3_api(prompt: str) -> str:
-    response = requests.post(
-        API_URL,
-        json={"model": MODEL, "prompt": prompt, "stream": False},
-        headers={"Content-Type": "application/json"},
+def generate_response(question, relevant_chunks):
+    print(f"Generating response for question: {question}")
+    context = "\n\n".join(limit_chunks_by_token(relevant_chunks))
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are an expert assistant that answers user questions using retrieved documents "
+                "from a knowledge base. Your answers must strictly rely on the provided context. "
+                "If the answer is not in the context, respond with 'I don't know based on the provided information.' "
+                "Be precise, concise, and do not add any extra information outside the context. "
+                "Respond in a single, concise line with no extra commentary or formatting."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"Context:\n{context}\n\nQuestion:\n{question}"
+        },
+    ]
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0,
+        top_p=1,
     )
-    response.raise_for_status()
-    return response.json()["response"].strip()
+
+    return response.choices[0].message.content.strip()
 
 
-def generate_batch_responses(questions: List[str], relevant_chunks: List[List[str]]) -> List[str]:
+def generate_batch_responses(questions: list[str], relevant_chunks: list[list[str]]):
     assert len(questions) == len(relevant_chunks), "Mismatch between questions and context lists"
-    print(f"Generating individual responses for {len(questions)} questions")
+    print(f"Generating batch response for {len(questions)} questions")
 
-    results = []
+    enc = get_encoding(model)
+    max_tokens = 7500
+    system_tokens = count_tokens(
+        "You are an expert assistant that answers multiple user questions based on provided context...",
+        model=model,
+    )
+
+    batch = []
+    current_tokens = system_tokens
+    responses = []
+    indexes = []
+
     for i, (question, chunks) in enumerate(zip(questions, relevant_chunks)):
-        print(f"\n🔍 Processing Question {i + 1}")
-        limited_chunks = limit_chunks_by_token(chunks, max_tokens=2000)
-        # for i, chunk in enumerate(limited_chunks):
-        #     print(f"\n🔹 Chunk {i + 1}:\n{chunk}")
-        #     print("\n" + "-" * 50)
+        limited = limit_chunks_by_token(chunks, model=model, max_tokens=2000)
+        context = "\n".join(limited)
+        entry = f"Context {i+1}:\n{context}\nQuestion {i+1}:\n{question}\n\n"
+        entry_tokens = len(enc.encode(entry))
 
-        context = "\n".join(limited_chunks)
+        if current_tokens + entry_tokens > max_tokens:
+            responses += _run_batch(indexes, batch)
+            batch = [entry]
+            indexes = [i]
+            current_tokens = system_tokens + entry_tokens
+        else:
+            batch.append(entry)
+            indexes.append(i)
+            current_tokens += entry_tokens
 
-        prompt = (
-            "You are a precise assistant. You answer using only the information from the provided document context.\n"
-            "Do not use any external knowledge or make assumptions.\n"
-            "If the answer is not found in the context, say exactly:\n"
-            "\"Not mentioned in the document.\" and nothing more.\n\n"
-            "Provide a complete and detailed answer using all relevant facts from the context.\n"
-            "Do not summarize briefly. Include every important point mentioned.\n"
-            "Do not leave out any useful information.\n\n"
-            "⚠️ Important formatting rules:\n"
-            "- Respond in a single paragraph of plain text.\n"
-            "- Do NOT use bullet points, numbering, line breaks, bold text, or markdown.\n"
-            "- Do NOT repeat the question.\n\n"
-            f"Context:\n{context.strip()}\n\n"
-            f"Question:\n{question.strip()}\n\n"
-            "Now provide the answer as a single paragraph of plain text:"
+    if batch:
+        responses += _run_batch(indexes, batch)
+
+    return responses
+
+
+def _run_batch(indexes, batch_entries):
+    prompt = "".join(batch_entries)
+    numbered_answers = "\n".join(f"Answer {i + 1}:" for i in range(len(indexes)))
+    
+    full_prompt = (
+        "You are an expert assistant that answers multiple user questions based on provided context.\n"
+        "Each question is numbered and has a corresponding context.\n"
+        "You must rely only on the corresponding context for each question. Be concise.\n"
+        "If an answer is not in the context, say 'I don't know based on the provided information.'\n"
+        "Answer each question one by one. Mention every relevant detail from the document.\n"
+        "Provide your answers exactly in the format:\n"
+        + numbered_answers +
+        "\n\nDo not repeat the question. Do not use markdown formatting.\n\n"
+        + prompt
+    )
+
+    enc = get_encoding(model)
+    prompt_token_count = len(enc.encode(full_prompt))
+    available_output_tokens = max(100, 8000 - prompt_token_count)
+
+    print("\n🔍 Sending batch to LLM:")
+    for entry in batch_entries:
+        print("-------- BATCH ENTRY --------")
+        print(entry.strip())
+    print("-------- END OF BATCH --------\n")
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": full_prompt},
+            ],
+            max_tokens=available_output_tokens,
+            temperature=0,
+            top_p=1,
         )
+    except Exception as e:
+        print("API call failed:", e)
+        return ["ERROR"] * len(indexes)
 
-        try:
-            response = call_llama3_api(prompt)
-            print("🧠 LLM Response:\n", response)
-            results.append(response.strip())
-        except Exception as e:
-            print("❌ API call failed:", e)
-            results.append("ERROR")
+    output = response.choices[0].message.content.strip()
+    print("\n🧠 Raw LLM Response:\n", output, "\n")
 
-    return results
+    pattern = r"Answer (\d+):\s*(.*?)(?=\nAnswer \d+:|$)"
+    matches = re.findall(pattern, output, re.DOTALL)
+    answer_map = {int(num): ans.strip() for num, ans in matches}
+    return [answer_map.get(i + 1, "No answer found.") for i in range(len(indexes))]
